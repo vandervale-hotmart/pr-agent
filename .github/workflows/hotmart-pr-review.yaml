@@ -1,0 +1,62 @@
+name: Hotmart PR Review
+
+on:
+  workflow_call:
+    inputs:
+      pr_url:
+        required: true
+        type: string
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      OPENAI_KEY:
+        required: false
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  hotmart-pr-review:
+    runs-on: buildstaging
+    name: Hotmart PR Analysis
+    
+    steps:
+      - name: Checkout pr-agent
+        uses: actions/checkout@v4
+        with:
+          repository: vandervale-hotmart/pr-agent
+          ref: main
+          
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          
+      - name: Run PR Review
+        run: |
+          python pr_agent/cli.py --pr_url=${{ inputs.pr_url }} review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+        continue-on-error: true
+          
+      - name: Check Circular Dependencies
+        run: |
+          python pr_agent/cli.py --pr_url=${{ inputs.pr_url }} circular_deps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+          
+      - name: Generate PR Description
+        run: |
+          python pr_agent/cli.py --pr_url=${{ inputs.pr_url }} describe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+        continue-on-error: true

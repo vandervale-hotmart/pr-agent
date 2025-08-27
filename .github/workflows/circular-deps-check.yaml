@@ -1,0 +1,41 @@
+name: Circular Dependencies Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - '**/application.yml'
+      - '**/application.yaml'
+      - 'pr_agent/tools/circular_dependency_checker.py'
+      - 'pr_agent/tools/pr_circular_deps.py'
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  circular-deps:
+    runs-on: buildstaging
+    name: Check for circular dependencies
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          
+      - name: Run circular dependency check
+        run: |
+          python pr_agent/cli.py --pr_url=${{ github.event.pull_request.html_url }} circular_deps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+        continue-on-error: true

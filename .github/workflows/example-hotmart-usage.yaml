@@ -1,0 +1,25 @@
+# Example workflow for Hotmart repositories
+# Copy this file to your repository's .github/workflows/ folder
+
+name: PR Analysis with Circular Dependency Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  pr-analysis:
+    if: github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/review'))
+    uses: vandervale-hotmart/pr-agent/.github/workflows/hotmart-pr-review.yaml@main
+    with:
+      pr_url: ${{ github.event.pull_request.html_url || github.event.issue.pull_request.html_url }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OPENAI_KEY: ${{ secrets.OPENAI_KEY }}

@@ -65,20 +65,59 @@ Configure via variáveis de ambiente:
 
 ## Integração com GitHub Actions
 
+### Opção 1: Workflow Reutilizável (Recomendado)
+
+```yaml
+name: PR Analysis with Circular Dependency Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  pr-analysis:
+    if: github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/review'))
+    uses: vandervale-hotmart/pr-agent/.github/workflows/hotmart-pr-review.yaml@main
+    with:
+      pr_url: ${{ github.event.pull_request.html_url || github.event.issue.pull_request.html_url }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+```
+
+### Opção 2: Workflow Standalone
+
 ```yaml
 name: PR Circular Dependency Check
 on:
   pull_request:
     types: [opened, synchronize]
+    paths:
+      - '**/application.yml'
+      - '**/application.yaml'
 
 jobs:
   circular-deps:
-    runs-on: ubuntu-latest
+    runs-on: buildstaging
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        repository: vandervale-hotmart/pr-agent
+        ref: main
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - run: pip install -r requirements.txt
     - name: Check Circular Dependencies
       run: |
-        python cli.py --pr_url=${{ github.event.pull_request.html_url }} circular_deps
+        python pr_agent/cli.py --pr_url=${{ github.event.pull_request.html_url }} circular_deps
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```

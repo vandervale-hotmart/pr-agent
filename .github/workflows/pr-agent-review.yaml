@@ -5,8 +5,10 @@
 name: PR-Agent
 
 on:
-# pull_request:
-# issue_comment:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +17,7 @@ permissions:
 
 jobs:
   pr_agent_job:
-    runs-on: ubuntu-latest
+    runs-on: buildstaging
     name: Run pr agent on every pull request
     steps:
       - name: PR Agent action step
@@ -30,3 +32,12 @@ jobs:
           GITHUB_ACTION_CONFIG.AUTO_DESCRIBE: true
           GITHUB_ACTION_CONFIG.AUTO_REVIEW: true
           GITHUB_ACTION_CONFIG.AUTO_IMPROVE: true
+          
+      - name: Check Circular Dependencies
+        if: github.event_name == 'pull_request'
+        run: |
+          python pr_agent/cli.py --pr_url=${{ github.event.pull_request.html_url }} circular_deps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+        continue-on-error: true
